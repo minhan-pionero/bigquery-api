@@ -25,7 +25,7 @@ TABLE_MAPPING = {
     Platform.FACEBOOK: {
         "profiles": "profiles_facebook",
         "urls": "profile_urls_facebook",
-        "url_followers": "url_followers_facebook",
+        "seed_urls": "seed_urls_facebook",
     },
 }
 

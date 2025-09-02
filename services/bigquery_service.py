@@ -69,10 +69,10 @@ class BigQueryService:
             existing_tables = []
             
             for platform in Platform:
-                for table_type in ["profiles", "urls", "keywords", "url_followers"]:
+                for table_type in ["profiles", "urls", "keywords", "seed_urls"]:
                     if platform == Platform.FACEBOOK and table_type == "keywords":
                         continue
-                    if platform == Platform.LINKEDIN and table_type == "url_followers":
+                    if platform == Platform.LINKEDIN and table_type == "seed_urls":
                         continue
                     table_name = TABLE_MAPPING[platform][table_type]
                     table_ref = self.dataset_ref.table(table_name)

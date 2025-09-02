@@ -35,37 +35,62 @@ async def get_pending_keywords(
 async def insert_keyword(
     payload: Dict[str, Any] = ...
 ):
-    """Insert a new keyword"""
+    """Insert new keywords (single keyword or array of keywords)"""
     try:
-        if not payload.get("keyword"):
-            raise HTTPException(status_code=400, detail="keyword is required")
+        # Support both single keyword and array of keywords
+        keywords_to_insert = []
         
-        # Create new keyword
-        keyword_data = {
-            "id": str(uuid.uuid4()),
-            "keyword": payload["keyword"],
-            "start": 0,
-            "status": "pending",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
+        if "keyword" in payload:
+            # Single keyword (backward compatibility)
+            if not payload.get("keyword"):
+                raise HTTPException(status_code=400, detail="keyword is required")
+            keywords_to_insert.append(payload["keyword"])
+            
+        elif "keywords" in payload:
+            # Array of keywords (new feature)
+            if not payload.get("keywords") or not isinstance(payload["keywords"], list):
+                raise HTTPException(status_code=400, detail="keywords must be a non-empty array")
+            keywords_to_insert = payload["keywords"]
+            
+        else:
+            raise HTTPException(status_code=400, detail="Either 'keyword' or 'keywords' is required")
         
-        # Transform and insert data
-        transformed_data = transform_data(Platform.LINKEDIN, "keywords", keyword_data)
+        # Remove empty keywords and duplicates
+        keywords_to_insert = list(set([k.strip() for k in keywords_to_insert if k and k.strip()]))
+        
+        if not keywords_to_insert:
+            raise HTTPException(status_code=400, detail="No valid keywords provided")
+        
+        # Create keyword data for all keywords
+        keywords_data = []
+        for keyword in keywords_to_insert:
+            keyword_data = {
+                "id": str(uuid.uuid4()),
+                "keyword": f'{keyword} site:linkedin.com',
+                "start": 0,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            }
+            keywords_data.append(keyword_data)
+        
+        # Transform and insert all keywords
+        transformed_data = [transform_data(Platform.LINKEDIN, "keywords", kw_data) for kw_data in keywords_data]
         bigquery_service.insert_if_not_exists(
             Platform.LINKEDIN,
             "keywords",
-            [transformed_data],
+            transformed_data,
             "keyword"
         )
 
         return {
             "status": "success", 
-            "message": "Keyword inserted successfully", 
-            "id": keyword_data["id"]
+            "message": f"Successfully inserted {len(keywords_data)} keywords", 
+            "count": len(keywords_data),
+            "keywords": [{"id": kw["id"], "keyword": kw["keyword"]} for kw in keywords_data]
         }
     except Exception as e:
-        logger.error(f"Error inserting keyword: {e}")
+        logger.error(f"Error inserting keywords: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/keywords/linkedin/processing") 

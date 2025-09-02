@@ -339,7 +339,7 @@ def transform_linkedin_keyword(data: Dict[str, Any]) -> Dict[str, Any]:
     
     return transformed
 
-def transform_facebook_url_follower(data: Dict[str, Any]) -> Dict[str, Any]:
+def transform_facebook_seed_url(data: Dict[str, Any]) -> Dict[str, Any]:
     """Transform Facebook URL follower data to BigQuery format - minimal processing"""
     
     transformed = data.copy()
@@ -382,7 +382,7 @@ TRANSFORM_MAPPING = {
     Platform.FACEBOOK: {
         "profiles": transform_facebook_profile,
         "urls": transform_facebook_url,
-        "url_followers": transform_facebook_url_follower
+        "seed_urls": transform_facebook_seed_url
     }
 }
 

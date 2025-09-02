@@ -68,14 +68,14 @@ router = APIRouter()
 # ================================
 # URL FOLLOWER ENDPOINTS
 # ================================
-@router.get("/facebook/url_followers/pending")
-async def get_pending_url_followers(
+@router.get("/facebook/seed-urls/pending")
+async def get_pending_seed_urls(
     extension_id: str = Query(..., description="Extension ID to filter URL followers"),
     limit: int = Query(default=10, ge=1, le=100)
 ):
     """Get pending URL followers for processing (including processing status for this extension)"""
     try:
-        table_name = TABLE_MAPPING[Platform.FACEBOOK]["url_followers"]
+        table_name = TABLE_MAPPING[Platform.FACEBOOK]["seed_urls"]
         
         query = f"""
         SELECT id, url, max_profiles, status, extension_id
@@ -93,9 +93,9 @@ async def get_pending_url_followers(
         
         results = bigquery_service.query_table(query)
         
-        url_followers = []
+        seed_urls = []
         for row in results:
-            url_followers.append({
+            seed_urls.append({
                 "id": row.id,
                 "url": row.url,
                 "max_profiles": row.max_profiles if hasattr(row, 'max_profiles') else 200,
@@ -105,8 +105,8 @@ async def get_pending_url_followers(
         
         return {
             "status": "success",
-            "pending_url_followers": url_followers,
-            "count": len(url_followers),
+            "pending_seed_urls": seed_urls,
+            "count": len(seed_urls),
             "extension_id": extension_id
         }
         
@@ -114,15 +114,15 @@ async def get_pending_url_followers(
         logger.error(f"❌ Error getting pending Facebook URL followers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/facebook/url_followers/all")
-async def get_all_url_followers(
+@router.get("/facebook/seed-urls/all")
+async def get_all_seed_urls(
     status: Optional[str] = Query(None, description="Filter by status (pending, processing, completed, failed)"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0)
 ):
     """Get all URL followers with optional status filter"""
     try:
-        table_name = TABLE_MAPPING[Platform.FACEBOOK]["url_followers"]
+        table_name = TABLE_MAPPING[Platform.FACEBOOK]["seed_urls"]
         
         # Build WHERE clause
         where_clause = ""
@@ -140,9 +140,9 @@ async def get_all_url_followers(
         
         results = bigquery_service.query_table(query)
         
-        url_followers = []
+        seed_urls = []
         for row in results:
-            url_followers.append({
+            seed_urls.append({
                 "id": row.id,
                 "url": row.url,
                 "max_profiles": row.max_profiles if hasattr(row, 'max_profiles') else 200,
@@ -155,8 +155,8 @@ async def get_all_url_followers(
         
         return {
             "status": "success",
-            "url_followers": url_followers,
-            "count": len(url_followers),
+            "seed_urls": seed_urls,
+            "count": len(seed_urls),
             "filter_status": status,
             "pagination": {
                 "limit": limit,
@@ -168,43 +168,46 @@ async def get_all_url_followers(
         logger.error(f"❌ Error getting all Facebook URL followers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/facebook/url_followers")
-async def create_url_follower(
+@router.post("/facebook/seed-urls")
+async def create_seed_url(
     payload: Dict[str, Any] = ...
 ):
     """Create a new URL follower"""
     try:
         # Validate required fields
-        if "url" not in payload:
-            raise HTTPException(status_code=400, detail="URL is required")
-        
+        if "seed_urls" not in payload:
+            raise HTTPException(status_code=400, detail="Seed URLs are required")
+
         # Validate URL format
-        url = payload["url"].strip()
-        if not url.startswith("https://www.facebook.com/") or not url.endswith("/followers"):
-            raise HTTPException(status_code=400, detail="URL must be a Facebook followers URL (e.g., https://www.facebook.com/username/followers)")
-        
-        # Set default values
-        max_profiles = payload.get("max_profiles", 100)
-        if not isinstance(max_profiles, int) or max_profiles < 1 or max_profiles > 1000:
-            raise HTTPException(status_code=400, detail="max_profiles must be between 1 and 1000")
-        
+        seed_urls = payload["seed_urls"]
+        if not isinstance(seed_urls, list) or not all(isinstance(url, str) for url in seed_urls):
+            raise HTTPException(status_code=400, detail="Seed URLs must be a list of strings")
+
+        for url in seed_urls:
+            if not url.startswith("https://www.facebook.com/") or not url.endswith("/followers"):
+                raise HTTPException(status_code=400, detail="Each URL must be a Facebook followers URL (e.g., https://www.facebook.com/username/followers)")
+
         # Create new URL follower
-        url_follower_data = {
-            "id": str(uuid.uuid4()),
-            "url": url,
-            "max_profiles": max_profiles,
-            "status": "pending",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-            "processed_count": 0
-        }
-        
+        seed_urls_data = []
+        for url in seed_urls:
+            seed_url_data = {
+                "id": str(uuid.uuid4()),
+                "url": url,
+                "max_profiles": 100,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "processed_count": 0
+            }
+
+            seed_urls_data.append(seed_url_data)
+
         # Transform and insert data
-        transformed_data = transform_data(Platform.FACEBOOK, "url_followers", url_follower_data)
+        transformed_data = [transform_data(Platform.FACEBOOK, "seed_urls", seed_url) for seed_url in seed_urls_data]
         bigquery_service.insert_if_not_exists(
             Platform.FACEBOOK, 
-            "url_followers", 
-            [transformed_data], 
+            "seed_urls", 
+            transformed_data, 
             "url"
         )
         
@@ -212,8 +215,8 @@ async def create_url_follower(
         return {
             "status": "success",
             "message": "URL follower created successfully",
-            "url_follower": {
-                "id": url_follower_data["id"],
+            "seed_url": {
+                "id": seed_url_data["id"],
                 "url": url,
                 "max_profiles": max_profiles,
                 "status": "pending"
@@ -226,9 +229,9 @@ async def create_url_follower(
         logger.error(f"❌ Error creating Facebook URL follower: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/facebook/url_followers/{url_follower_id}/status")
-async def update_url_follower_status(
-    url_follower_id: str = Path(..., description="URL Follower ID to update"),
+@router.put("/facebook/seed-urls/{seed_url_id}/status")
+async def update_seed_url_status(
+    seed_url_id: str = Path(..., description="URL Follower ID to update"),
     payload: Dict[str, Any] = ...
 ):
     """Update URL follower status"""
@@ -247,25 +250,25 @@ async def update_url_follower_status(
             raise HTTPException(status_code=400, detail="No valid fields to update")
 
         update_fields["updated_at"] = datetime.now(timezone.utc)
-        update_fields["id"] = url_follower_id
+        update_fields["id"] = seed_url_id
 
-        bigquery_service.upsert_data(Platform.FACEBOOK, "url_followers", update_fields, "id")
+        bigquery_service.upsert_data(Platform.FACEBOOK, "seed_urls", update_fields, "id")
         
-        logger.info(f"✅ Updated Facebook URL follower {url_follower_id}")
+        logger.info(f"✅ Updated Facebook URL follower {seed_url_id}")
         return {
             "status": "success",
-            "message": f"URL follower {url_follower_id} updated successfully",
-            "url_follower_id": url_follower_id,
+            "message": f"URL follower {seed_url_id} updated successfully",
+            "seed_url_id": seed_url_id,
             "updated_fields": list(update_fields.keys())
         }
         
     except Exception as e:
-        logger.error(f"❌ Error updating Facebook URL follower {url_follower_id}: {e}")
+        logger.error(f"❌ Error updating Facebook URL follower {seed_url_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/facebook/url_followers/{url_follower_id}/extension")
-async def update_url_follower_extension_id(
-    url_follower_id: str = Path(..., description="URL Follower ID to update"),
+@router.put("/facebook/seed-urls/{seed_url_id}/extension")
+async def update_seed_url_extension_id(
+    seed_url_id: str = Path(..., description="URL Follower ID to update"),
     payload: Dict[str, Any] = ...
 ):
     """Update URL follower extension ID (claim ownership)"""
@@ -276,21 +279,21 @@ async def update_url_follower_extension_id(
         update_fields = {
             "extension_id": payload["extension_id"],
             "updated_at": datetime.now(timezone.utc),
-            "id": url_follower_id
+            "id": seed_url_id
         }
 
-        bigquery_service.upsert_data(Platform.FACEBOOK, "url_followers", update_fields, "id")
+        bigquery_service.upsert_data(Platform.FACEBOOK, "seed_urls", update_fields, "id")
         
-        logger.info(f"✅ Updated Facebook URL follower {url_follower_id} extension_id to {payload['extension_id']}")
+        logger.info(f"✅ Updated Facebook URL follower {seed_url_id} extension_id to {payload['extension_id']}")
         return {
             "status": "success",
-            "message": f"URL follower {url_follower_id} extension_id updated successfully",
-            "url_follower_id": url_follower_id,
+            "message": f"URL follower {seed_url_id} extension_id updated successfully",
+            "seed_url_id": seed_url_id,
             "extension_id": payload["extension_id"]
         }
         
     except Exception as e:
-        logger.error(f"❌ Error updating Facebook URL follower extension_id {url_follower_id}: {e}")
+        logger.error(f"❌ Error updating Facebook URL follower extension_id {seed_url_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ================================
@@ -329,7 +332,7 @@ async def insert_profile_urls_batch(profile_urls_data: List[Dict[str, Any]]):
 async def get_pending_profile_urls(
     limit: int = Query(default=200, ge=1, le=500),
     crawl_depth: Optional[int] = Query(default=None, description="Filter by crawl depth"),
-    url_follower_id: Optional[str] = Query(default=None, description="Filter by URL follower ID")
+    seed_url_id: Optional[str] = Query(default=None, description="Filter by URL follower ID")
 ):
     """Get pending profile URLs for processing"""
     try:
@@ -338,11 +341,11 @@ async def get_pending_profile_urls(
         where_clause = "WHERE status = 'pending' OR status IS NULL"
         if crawl_depth is not None:
             where_clause += f" AND crawl_depth = {crawl_depth}"
-        if url_follower_id is not None:
-            where_clause += f" AND url_follower_id = '{url_follower_id}'"
+        if seed_url_id is not None:
+            where_clause += f" AND seed_url_id = '{seed_url_id}'"
         
         query = f"""
-        SELECT id, account_id, url, parent_account_id, crawl_depth, source_type, url_follower_id
+        SELECT id, account_id, url, parent_account_id, crawl_depth, source_type, seed_url_id
         FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{table_name}`
         {where_clause}
         ORDER BY crawl_depth ASC, created_at ASC
@@ -360,7 +363,7 @@ async def get_pending_profile_urls(
                 "parent_account_id": getattr(row, 'parent_account_id', None),
                 "crawl_depth": getattr(row, 'crawl_depth', 1),
                 "source_type": getattr(row, 'source_type', 'follower'),
-                "url_follower_id": getattr(row, 'url_follower_id', None)
+                "seed_url_id": getattr(row, 'seed_url_id', None)
             })
         
         return {
@@ -368,7 +371,7 @@ async def get_pending_profile_urls(
             "data": profile_urls,  # Changed from pending_profile_urls to data to match frontend
             "count": len(profile_urls),
             "filter_crawl_depth": crawl_depth,
-            "filter_url_follower_id": url_follower_id
+            "filter_seed_url_id": seed_url_id
         }
         
     except Exception as e:
@@ -379,7 +382,7 @@ async def get_pending_profile_urls(
 async def get_pending_and_processing_profile_urls(
     limit: int = Query(default=200, ge=1, le=500),
     crawl_depth: Optional[int] = Query(default=None, description="Filter by crawl depth"),
-    url_follower_id: Optional[str] = Query(default=None, description="Filter by URL follower ID")
+    seed_url_id: Optional[str] = Query(default=None, description="Filter by URL follower ID")
 ):
     """Get pending AND processing profile URLs for processing (resume functionality)
     
@@ -395,11 +398,11 @@ async def get_pending_and_processing_profile_urls(
         where_clause = "WHERE (status = 'pending' OR status = 'processing' OR status = 'failed' OR status = 'skipped' OR status IS NULL)"
         if crawl_depth is not None:
             where_clause += f" AND crawl_depth = {crawl_depth}"
-        if url_follower_id is not None:
-            where_clause += f" AND url_follower_id = '{url_follower_id}'"
+        if seed_url_id is not None:
+            where_clause += f" AND seed_url_id = '{seed_url_id}'"
         
         query = f"""
-        SELECT id, account_id, url, parent_account_id, crawl_depth, source_type, url_follower_id, status
+        SELECT id, account_id, url, parent_account_id, crawl_depth, source_type, seed_url_id, status
         FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{table_name}`
         {where_clause}
         ORDER BY 
@@ -426,7 +429,7 @@ async def get_pending_and_processing_profile_urls(
                 "parent_account_id": getattr(row, 'parent_account_id', None),
                 "crawl_depth": getattr(row, 'crawl_depth', 1),
                 "source_type": getattr(row, 'source_type', 'follower'),
-                "url_follower_id": getattr(row, 'url_follower_id', None),
+                "seed_url_id": getattr(row, 'seed_url_id', None),
                 "status": getattr(row, 'status', 'pending')  # Include status for resume logic
             })
         
@@ -435,7 +438,7 @@ async def get_pending_and_processing_profile_urls(
             "data": profile_urls,
             "count": len(profile_urls),
             "filter_crawl_depth": crawl_depth,
-            "filter_url_follower_id": url_follower_id,
+            "filter_seed_url_id": seed_url_id,
             "note": "Includes both pending and processing status profiles. Processing profiles are prioritized for resume functionality."
         }
         
@@ -500,12 +503,6 @@ async def insert_facebook_profile(profile_data: Dict[str, Any]):
         table_name = TABLE_MAPPING[Platform.FACEBOOK]["profiles"]
         row_data = transform_data(Platform.FACEBOOK, "profiles", cleaned_profile_data)
 
-        logger.info(f"[DEBUG] Transformed row_data : {row_data}")
-
-        # Log transformed data for debugging
-        logger.info(f"[DEBUG] Transformed row_data keys: {list(row_data.keys())}")
-        logger.info(f"[DEBUG] Sample transformed data: account_id={row_data.get('account_id')}, experiences_count={len(row_data.get('experiences', []))}")
-        
         bigquery_service.insert_if_not_exists(Platform.FACEBOOK, "profiles", [row_data], unique_key="account_id")
         
         # Create profile URLs from friend list if exists
@@ -612,25 +609,25 @@ async def insert_facebook_profiles_batch(profiles_data: List[Dict[str, Any]]):
 async def get_facebook_crawl_stats():
     """Get Facebook crawling statistics"""
     try:
-        url_follower_table = TABLE_MAPPING[Platform.FACEBOOK]["url_followers"]
+        seed_url_table = TABLE_MAPPING[Platform.FACEBOOK]["seed_urls"]
         profile_url_table = TABLE_MAPPING[Platform.FACEBOOK]["urls"] 
         profile_table = TABLE_MAPPING[Platform.FACEBOOK]["profiles"]
         
         # URL Follower stats
-        url_follower_query = f"""
+        seed_url_query = f"""
         SELECT status, extension_id, COUNT(*) as count
-        FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{url_follower_table}`
+        FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{seed_url_table}`
         GROUP BY status, extension_id
         ORDER BY status, extension_id
         """
-        url_follower_results = bigquery_service.query_table(url_follower_query)
-        url_follower_stats = {}
-        for row in url_follower_results:
+        seed_url_results = bigquery_service.query_table(seed_url_query)
+        seed_url_stats = {}
+        for row in seed_url_results:
             status = row.status or 'pending'
             extension_id = row.extension_id or 'unassigned'
-            if status not in url_follower_stats:
-                url_follower_stats[status] = {}
-            url_follower_stats[status][extension_id] = row.count
+            if status not in seed_url_stats:
+                seed_url_stats[status] = {}
+            seed_url_stats[status][extension_id] = row.count
         
         # Profile URL stats  
         profile_url_query = f"""
@@ -668,7 +665,7 @@ async def get_facebook_crawl_stats():
         
         return {
             "status": "success",
-            "url_followers": url_follower_stats,
+            "seed_urls": seed_url_stats,
             "profile_urls": profile_url_stats,
             "profiles": profile_stats
         }
@@ -678,14 +675,14 @@ async def get_facebook_crawl_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/facebook/profile/completed")
-async def get_completed_profiles_by_url_follower(
-    url_follower_id: Optional[str] = Query(None, description="URL follower ID to filter by")
+async def get_completed_profiles_by_seed_url(
+    seed_url_id: Optional[str] = Query(None, description="URL follower ID to filter by")
 ):
     """Get completed profiles by URL follower ID for lineage tracing"""
     try:
         table_name = TABLE_MAPPING[Platform.FACEBOOK]["profiles"]
         
-        if url_follower_id:
+        if seed_url_id:
             # Join facebook_profile with facebook_profile_url to get lineage information
             # This approach uses proper relational joins instead of duplicating data
             profile_url_table = TABLE_MAPPING[Platform.FACEBOOK]["urls"]
@@ -694,9 +691,9 @@ async def get_completed_profiles_by_url_follower(
             WITH direct_profile_urls AS (
                 -- Direct profile URLs from URL follower (depth 1)
                 SELECT pu.account_id, pu.parent_account_id, pu.crawl_depth, 
-                       pu.url_follower_id, pu.status as url_status
+                       pu.seed_url_id, pu.status as url_status
                 FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{profile_url_table}` pu
-                WHERE pu.url_follower_id = '{url_follower_id}'
+                WHERE pu.seed_url_id = '{seed_url_id}'
                   AND pu.status = 'completed'
             ),
             all_lineage_profile_urls AS (
@@ -707,7 +704,7 @@ async def get_completed_profiles_by_url_follower(
                 
                 -- Include friend profile URLs (depth 2+) whose parent is in our lineage
                 SELECT pu.account_id, pu.parent_account_id, pu.crawl_depth, 
-                       pu.url_follower_id, pu.status as url_status
+                       pu.seed_url_id, pu.status as url_status
                 FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{profile_url_table}` pu
                 WHERE pu.status = 'completed'
                   AND pu.parent_account_id IS NOT NULL
@@ -715,7 +712,7 @@ async def get_completed_profiles_by_url_follower(
                       SELECT account_id FROM direct_profile_urls
                   )
             )
-            SELECT lpu.account_id, lpu.parent_account_id, lpu.crawl_depth, lpu.url_follower_id,
+            SELECT lpu.account_id, lpu.parent_account_id, lpu.crawl_depth, lpu.seed_url_id,
                    p.username, p.profile_image, p.created_at as processed_at
             FROM all_lineage_profile_urls lpu
             INNER JOIN `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{table_name}` p
@@ -725,11 +722,11 @@ async def get_completed_profiles_by_url_follower(
             
             query_params = []
         else:
-            # Get all completed profiles if no url_follower_id specified (using JOIN)
+            # Get all completed profiles if no seed_url_id specified (using JOIN)
             profile_url_table = TABLE_MAPPING[Platform.FACEBOOK]["urls"]
             
             query = f"""
-            SELECT pu.account_id, pu.parent_account_id, pu.crawl_depth, pu.url_follower_id,
+            SELECT pu.account_id, pu.parent_account_id, pu.crawl_depth, pu.seed_url_id,
                    p.username, p.profile_image, p.created_at as processed_at
             FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{profile_url_table}` pu
             INNER JOIN `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{table_name}` p
@@ -754,21 +751,21 @@ async def get_completed_profiles_by_url_follower(
                 "parent_account_id": row.parent_account_id,
                 "crawl_depth": row.crawl_depth,
                 "status": "completed",  # All profiles returned are completed
-                "url_follower_id": row.url_follower_id,
+                "seed_url_id": row.seed_url_id,
                 "processed_at": row.processed_at.isoformat() if row.processed_at else None,
                 "username": row.username,
                 "profile_image": row.profile_image
             }
             completed_profiles.append(profile_data)
         
-        logger.info(f"✅ Found {len(completed_profiles)} completed profiles for URL follower: {url_follower_id}")
+        logger.info(f"✅ Found {len(completed_profiles)} completed profiles for URL follower: {seed_url_id}")
         return {
             "status": "success", 
             "data": completed_profiles,
             "count": len(completed_profiles),
-            "url_follower_id": url_follower_id
+            "seed_url_id": seed_url_id
         }
         
     except Exception as e:
-        logger.error(f"❌ Error getting completed profiles by URL follower {url_follower_id}: {e}")
+        logger.error(f"❌ Error getting completed profiles by URL follower {seed_url_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

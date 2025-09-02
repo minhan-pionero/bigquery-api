@@ -182,7 +182,7 @@ def get_facebook_profile_url_schema():
     return [
         bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("account_id", "STRING", mode="REQUIRED"),  # Account ID từ URL profile
-        bigquery.SchemaField("url_follower_id", "STRING", mode="NULLABLE"),  # ID từ url_followers (null nếu từ friend list)
+        bigquery.SchemaField("seed_url_id", "STRING", mode="NULLABLE"),  # ID từ seed_urls (null nếu từ friend list)
         bigquery.SchemaField("parent_account_id", "STRING", mode="NULLABLE"),  # Account ID của user cha
         bigquery.SchemaField("crawl_depth", "INTEGER", mode="NULLABLE"),  # Độ sâu crawl
         bigquery.SchemaField("url", "STRING", mode="REQUIRED"),  # Profile URL đầy đủ
@@ -206,12 +206,12 @@ def get_linkedin_keyword_schema():
         bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED"),
     ]
 
-def get_facebook_url_follower_schema():
+def get_facebook_seed_url_schema():
     """Schema for Facebook URL followers - seed URLs to start crawling from"""
     return [
         bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("url", "STRING", mode="REQUIRED"),  # URL seed (followers page)
-        bigquery.SchemaField("url_follower_id", "STRING", mode="NULLABLE"),  # ID từ url_followers (null nếu từ friend list)
+        bigquery.SchemaField("seed_url_id", "STRING", mode="NULLABLE"),  # ID từ seed_urls (null nếu từ friend list)
         bigquery.SchemaField("extension_id", "STRING", mode="NULLABLE"),  # ID của extension đang sử dụng
         bigquery.SchemaField("max_profiles", "INTEGER", mode="NULLABLE"),  # Max profiles to extract (default 200)
         bigquery.SchemaField("status", "STRING", mode="NULLABLE"),  # pending/processing/completed/failed
@@ -231,7 +231,7 @@ SCHEMA_MAPPING = {
     Platform.FACEBOOK: {
         "profiles": get_facebook_profile_schema,
         "urls": get_facebook_profile_url_schema,
-        "url_followers": get_facebook_url_follower_schema
+        "seed_urls": get_facebook_seed_url_schema
     }
 }
 
