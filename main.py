@@ -1,0 +1,107 @@
+"""
+Main application file - Multi-Platform Social Scraper BigQuery API Server
+"""
+
+import logging
+import os
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
+
+from .config.settings import SERVER_CONFIG, BIGQUERY_CONFIG, Platform, TABLE_MAPPING
+from .services.bigquery_service import bigquery_service
+from .api import linkedin, facebook
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Multi-Platform Social Scraper BigQuery API",
+    description="API server for Social Media Extensions to interact with BigQuery (LinkedIn, Facebook, etc.)",
+    version="2.0.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=SERVER_CONFIG["cors_origins"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include router
+app.include_router(linkedin.router, tags=["linkedin"])
+app.include_router(facebook.router, tags=["facebook"])
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize BigQuery when server starts"""
+    logger.info("🚀 Starting Multi-Platform Social Scraper BigQuery API Server")
+    
+    if not bigquery_service.initialize():
+        logger.error("❌ Failed to initialize BigQuery - server may not work properly")
+        return
+    
+    if not bigquery_service.create_tables_for_all_platforms():
+        logger.error("❌ Failed to create/verify tables - server may not work properly")
+        return
+    
+    logger.info("✅ Server startup completed successfully")
+
+@app.get("/")
+async def root():
+    """Health check endpoint with service information"""
+    return {
+        "status": "ok",
+        "service": "Multi-Platform Social Scraper BigQuery API",
+        "version": "2.0.0",
+        "project_id": BIGQUERY_CONFIG["project_id"],
+        "dataset_id": BIGQUERY_CONFIG["dataset_id"],
+        "supported_platforms": [platform.value for platform in Platform],
+        "tables": {
+            platform.value: {
+                "profiles": TABLE_MAPPING[platform]["profiles"],
+                "urls": TABLE_MAPPING[platform]["urls"],
+                "keywords": TABLE_MAPPING[platform]["keywords"]
+            }
+            for platform in Platform
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Detailed health check"""
+    try:
+        # Test BigQuery connection
+        query = "SELECT 1 as test"
+        result = bigquery_service.query_table(query)
+        
+        return {
+            "status": "healthy",
+            "bigquery_connection": "ok",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+def main():
+    """Main function to run the server"""
+    host = SERVER_CONFIG["host"]
+    port = int(os.environ.get("PORT", SERVER_CONFIG["port"]))
+    
+    logger.info(f"🚀 Starting server on {host}:{port}")
+    
+    uvicorn.run(
+        "api.main:app",
+        host=host,
+        port=port,
+        log_level=SERVER_CONFIG["log_level"],
+        reload=False
+    )
+
+if __name__ == "__main__":
+    main()
