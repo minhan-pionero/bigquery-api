@@ -218,7 +218,7 @@ async def create_seed_url(
             "seed_url": {
                 "id": seed_url_data["id"],
                 "url": url,
-                "max_profiles": max_profiles,
+                "max_profiles": 100,
                 "status": "pending"
             }
         }
