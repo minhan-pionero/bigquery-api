@@ -4,14 +4,20 @@ Main application file - Multi-Platform Social Scraper BigQuery API Server
 
 import logging
 import os
+import sys
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from .config.settings import SERVER_CONFIG, BIGQUERY_CONFIG, Platform, TABLE_MAPPING
-from .services.bigquery_service import bigquery_service
-from .api import linkedin, facebook
+# Add current directory to Python path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from config.settings import SERVER_CONFIG, BIGQUERY_CONFIG, Platform
+from services.bigquery_service import bigquery_service
+from api import linkedin, facebook
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -62,14 +68,6 @@ async def root():
         "project_id": BIGQUERY_CONFIG["project_id"],
         "dataset_id": BIGQUERY_CONFIG["dataset_id"],
         "supported_platforms": [platform.value for platform in Platform],
-        "tables": {
-            platform.value: {
-                "profiles": TABLE_MAPPING[platform]["profiles"],
-                "urls": TABLE_MAPPING[platform]["urls"],
-                "keywords": TABLE_MAPPING[platform]["keywords"]
-            }
-            for platform in Platform
-        }
     }
 
 @app.get("/health")
@@ -95,8 +93,9 @@ def main():
     
     logger.info(f"🚀 Starting server on {host}:{port}")
     
+    # Use the correct module path for uvicorn
     uvicorn.run(
-        "api.main:app",
+        "main:app",
         host=host,
         port=port,
         log_level=SERVER_CONFIG["log_level"],

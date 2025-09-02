@@ -2,12 +2,10 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Path, Query, Body
-from ..config.settings import Platform, TABLE_MAPPING
-from ..services.bigquery_service import bigquery_service
-from ..utils.transformers import transform_data
-from ..config.settings import Platform
+from config.settings import Platform, TABLE_MAPPING
+from services.bigquery_service import bigquery_service
+from utils.transformers import transform_data
 
 
 logger = logging.getLogger(__name__)

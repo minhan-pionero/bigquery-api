@@ -8,9 +8,9 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Path, Query
 
-from ..config.settings import Platform, TABLE_MAPPING
-from ..services.bigquery_service import bigquery_service
-from ..utils.transformers import transform_data
+from config.settings import Platform, TABLE_MAPPING
+from services.bigquery_service import bigquery_service
+from utils.transformers import transform_data
 
 def validate_facebook_profile_data(profile_data: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and clean Facebook profile data before processing"""

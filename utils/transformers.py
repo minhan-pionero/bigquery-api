@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
-from ..config.settings import Platform
+from config.settings import Platform
 
 def convert_datetime_to_iso(value):
     """Convert datetime object to ISO string for BigQuery compatibility"""

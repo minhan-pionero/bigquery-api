@@ -1,14 +1,13 @@
 import logging
-import time
 import requests
 from google.cloud import bigquery
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from datetime import datetime
 import pandas as pd
 
-from ..config.settings import BIGQUERY_CONFIG, SERVICE_ACCOUNT_CONFIG, TABLE_MAPPING, Platform
-from ..config.schemas import get_schema
-from ..utils.transformers import convert_batch_datetime_for_json
+from config.settings import BIGQUERY_CONFIG, SERVICE_ACCOUNT_CONFIG, TABLE_MAPPING, Platform
+from config.schemas import get_schema
+from utils.transformers import convert_batch_datetime_for_json
 
 logger = logging.getLogger(__name__)
 
