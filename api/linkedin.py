@@ -33,7 +33,7 @@ async def get_pending_keywords(
 
 @router.post("/keywords/linkedin")
 async def insert_keyword(
-    payload: Dict[str, Any] = ...
+    payload: Dict[str, Any] = Body(...)
 ):
     """Insert new keywords (single keyword or array of keywords)"""
     try:
@@ -61,12 +61,63 @@ async def insert_keyword(
         if not keywords_to_insert:
             raise HTTPException(status_code=400, detail="No valid keywords provided")
         
-        # Create keyword data for all keywords
+        # Format keywords with site:linkedin.com
+        formatted_keywords = [f'{keyword} site:linkedin.com' for keyword in keywords_to_insert]
+        
+        # Check for existing keywords in database
+        existing_keywords = []
+        new_keywords = []
+        
+        for i, formatted_keyword in enumerate(formatted_keywords):
+            # Query to check if keyword exists
+            table_name = TABLE_MAPPING[Platform.LINKEDIN]["keywords"]
+            check_query = f"""
+            SELECT keyword 
+            FROM `{bigquery_service.project_id}.{bigquery_service.dataset_id}.{table_name}`
+            WHERE keyword = '{formatted_keyword}'
+            LIMIT 1
+            """
+            
+            results = bigquery_service.query_table(check_query)
+            
+            if len(list(results)) > 0:
+                existing_keywords.append(keywords_to_insert[i])  # Original keyword without site:linkedin.com
+            else:
+                new_keywords.append({
+                    "original": keywords_to_insert[i],
+                    "formatted": formatted_keyword
+                })
+        
+        # If there are existing keywords, return error with details
+        if existing_keywords:
+            if len(existing_keywords) == len(keywords_to_insert):
+                # All keywords already exist
+                raise HTTPException(
+                    status_code=409, 
+                    detail={
+                        "error": "Keywords already exist",
+                        "existing_keywords": existing_keywords,
+                        "message": f"All {len(existing_keywords)} keyword(s) already exist in database"
+                    }
+                )
+            else:
+                # Some keywords exist, some are new
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "Some keywords already exist", 
+                        "existing_keywords": existing_keywords,
+                        "new_keywords": [kw["original"] for kw in new_keywords],
+                        "message": f"{len(existing_keywords)} keyword(s) already exist, {len(new_keywords)} are new"
+                    }
+                )
+        
+        # Create keyword data for new keywords only
         keywords_data = []
-        for keyword in keywords_to_insert:
+        for keyword_info in new_keywords:
             keyword_data = {
                 "id": str(uuid.uuid4()),
-                "keyword": f'{keyword} site:linkedin.com',
+                "keyword": keyword_info["formatted"],
                 "start": 0,
                 "status": "pending",
                 "created_at": datetime.now(timezone.utc),
@@ -74,7 +125,7 @@ async def insert_keyword(
             }
             keywords_data.append(keyword_data)
         
-        # Transform and insert all keywords
+        # Transform and insert all new keywords
         transformed_data = [transform_data(Platform.LINKEDIN, "keywords", kw_data) for kw_data in keywords_data]
         bigquery_service.insert_if_not_exists(
             Platform.LINKEDIN,
@@ -83,14 +134,19 @@ async def insert_keyword(
             "keyword"
         )
 
+        logger.info(f"✅ Successfully inserted {len(keywords_data)} new LinkedIn keywords")
         return {
             "status": "success", 
-            "message": f"Successfully inserted {len(keywords_data)} keywords", 
+            "message": f"Successfully inserted {len(keywords_data)} new keywords", 
             "count": len(keywords_data),
             "keywords": [{"id": kw["id"], "keyword": kw["keyword"]} for kw in keywords_data]
         }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like our 409 conflicts)
+        raise
     except Exception as e:
-        logger.error(f"Error inserting keywords: {e}")
+        logger.error(f"❌ Error inserting LinkedIn keywords: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/keywords/linkedin/processing") 

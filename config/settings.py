@@ -26,6 +26,8 @@ TABLE_MAPPING = {
         "profiles": "profiles_facebook",
         "urls": "profile_urls_facebook",
         "seed_urls": "seed_urls_facebook",
+        "urls_v1": "profile_urls_facebook_v1",
+        "seed_urls_v1": "seed_urls_facebook_v1",
     },
 }
 
@@ -43,4 +45,15 @@ SERVICE_ACCOUNT_CONFIG = {
     "metadata_url": 'http://metadata.google.internal/computeMetadata/v1/',
     "metadata_headers": {'Metadata-Flavor': 'Google'},
     "service_account": 'default'
+}
+
+# Email configuration (Mandrill)
+EMAIL_CONFIG = {
+    "mandrill_api_key": "md-aeuZd69-RPEp1xvBojBk7Q",  # Set in environment variable
+    "from_email": "compass-dev@hajimari.inc",
+    "from_name": "compass-dev-team",
+    "to_emails": [
+        "nguyenminhan0402@gmail.com",
+        # "trunganh.nguyen_pt@pionero.io"
+    ],
 }

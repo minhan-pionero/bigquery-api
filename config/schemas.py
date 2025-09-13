@@ -211,11 +211,37 @@ def get_facebook_seed_url_schema():
     return [
         bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("url", "STRING", mode="REQUIRED"),  # URL seed (followers page)
-        bigquery.SchemaField("seed_url_id", "STRING", mode="NULLABLE"),  # ID từ seed_urls (null nếu từ friend list)
         bigquery.SchemaField("extension_id", "STRING", mode="NULLABLE"),  # ID của extension đang sử dụng
         bigquery.SchemaField("max_profiles", "INTEGER", mode="NULLABLE"),  # Max profiles to extract (default 200)
         bigquery.SchemaField("status", "STRING", mode="NULLABLE"),  # pending/processing/completed/failed
-        bigquery.SchemaField("processed_count", "INTEGER", mode="NULLABLE"),  # Số profile đã xử lý
+        bigquery.SchemaField("processed_at", "TIMESTAMP", mode="NULLABLE"),
+        bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED"),
+        bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED"),
+    ]
+
+def get_facebook_profile_url_v1_schema():
+    """Schema for Facebook Profile URLs V1 - individual profile URLs to crawl"""
+    return [
+        bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("account_id", "STRING", mode="REQUIRED"),  # Account ID từ URL profile
+        bigquery.SchemaField("seed_url_id", "STRING", mode="NULLABLE"),  # ID từ seed_urls (null nếu từ friend list)
+        bigquery.SchemaField("parent_account_id", "STRING", mode="NULLABLE"),  # Account ID của user cha
+        bigquery.SchemaField("crawl_depth", "INTEGER", mode="NULLABLE"),  # Độ sâu crawl
+        bigquery.SchemaField("url", "STRING", mode="REQUIRED"),  # Profile URL đầy đủ
+        bigquery.SchemaField("source_type", "STRING", mode="NULLABLE"),  # "follower" hoặc "friend"
+        bigquery.SchemaField("status", "STRING", mode="NULLABLE"),  # pending/processing/completed/failed
+        bigquery.SchemaField("processed_at", "TIMESTAMP", mode="NULLABLE"),
+        bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED"),
+        bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED"),
+    ]
+
+def get_facebook_seed_url_v1_schema():
+    """Schema for Facebook URL followers V1 - seed URLs to start crawling from"""
+    return [
+        bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("url", "STRING", mode="REQUIRED"),  # URL seed (followers page)
+        bigquery.SchemaField("extension_id", "STRING", mode="NULLABLE"),  # ID của extension đang sử dụng
+        bigquery.SchemaField("status", "STRING", mode="NULLABLE"),  # pending/processing/completed/failed
         bigquery.SchemaField("processed_at", "TIMESTAMP", mode="NULLABLE"),
         bigquery.SchemaField("created_at", "TIMESTAMP", mode="REQUIRED"),
         bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED"),
@@ -231,7 +257,9 @@ SCHEMA_MAPPING = {
     Platform.FACEBOOK: {
         "profiles": get_facebook_profile_schema,
         "urls": get_facebook_profile_url_schema,
-        "seed_urls": get_facebook_seed_url_schema
+        "seed_urls": get_facebook_seed_url_schema,
+        "urls_v1": get_facebook_profile_url_v1_schema,
+        "seed_urls_v1": get_facebook_seed_url_v1_schema
     }
 }
 

@@ -372,6 +372,59 @@ def transform_facebook_seed_url(data: Dict[str, Any]) -> Dict[str, Any]:
     
     return transformed
 
+def transform_facebook_url_v1(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform Facebook URL V1 data to BigQuery format - minimal processing"""
+    
+    # Simply ensure required fields and add timestamps
+    transformed = data.copy()
+    
+    # Ensure required fields exist
+    if "id" not in transformed:
+        transformed["id"] = str(uuid.uuid4())
+    if "status" not in transformed:
+        transformed["status"] = "pending"
+    
+    # Add timestamps if not present (as datetime object for BigQuery TIMESTAMP)
+    current_time = datetime.now(timezone.utc)
+    if "created_at" not in transformed:
+        transformed["created_at"] = current_time
+    if "updated_at" not in transformed:
+        transformed["updated_at"] = current_time
+    
+    # Ensure all datetime fields are serializable
+    transformed = ensure_datetime_serializable(transformed)
+    
+    return transformed
+
+def transform_facebook_seed_url_v1(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform Facebook URL follower V1 data to BigQuery format - minimal processing"""
+    
+    transformed = data.copy()
+    
+    # Ensure ID exists
+    if "id" not in transformed:
+        transformed["id"] = str(uuid.uuid4())
+    
+    # Ensure all ID fields are strings (BigQuery STRING columns)  
+    if "id" in transformed and transformed["id"] is not None:
+        transformed["id"] = str(transformed["id"])
+    
+    # Set default status if not present
+    if "status" not in transformed:
+        transformed["status"] = "pending"
+    
+    # Add timestamps if not present (as datetime object for BigQuery TIMESTAMP)
+    current_time = datetime.now(timezone.utc)
+    if "created_at" not in transformed:
+        transformed["created_at"] = current_time
+    if "updated_at" not in transformed:
+        transformed["updated_at"] = current_time
+    
+    # Ensure all datetime fields are serializable
+    transformed = ensure_datetime_serializable(transformed)
+    
+    return transformed
+
 # Transformation mapping
 TRANSFORM_MAPPING = {
     Platform.LINKEDIN: {
@@ -382,7 +435,9 @@ TRANSFORM_MAPPING = {
     Platform.FACEBOOK: {
         "profiles": transform_facebook_profile,
         "urls": transform_facebook_url,
-        "seed_urls": transform_facebook_seed_url
+        "seed_urls": transform_facebook_seed_url,
+        "urls_v1": transform_facebook_url_v1,
+        "seed_urls_v1": transform_facebook_seed_url_v1
     }
 }
 

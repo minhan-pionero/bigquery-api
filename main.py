@@ -17,7 +17,7 @@ if current_dir not in sys.path:
 
 from config.settings import SERVER_CONFIG, BIGQUERY_CONFIG, Platform
 from services.bigquery_service import bigquery_service
-from api import linkedin, facebook
+from api import linkedin, facebook, email
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,7 @@ app.add_middleware(
 # Include router
 app.include_router(linkedin.router, tags=["linkedin"])
 app.include_router(facebook.router, tags=["facebook"])
+app.include_router(email.router, tags=["email"])
 
 @app.on_event("startup")
 async def startup_event():
@@ -87,19 +88,26 @@ async def health_check():
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 def main():
-    """Main function to run the server"""
-    host = SERVER_CONFIG["host"]
-    port = int(os.environ.get("PORT", SERVER_CONFIG["port"]))
+    """Main function to run the server with default settings"""
+    run_server()
+
+def run_server(host=None, port=None, reload=False, log_level=None):
+    """Run the server with specified settings"""
+    host = host or SERVER_CONFIG["host"]
+    port = port or int(os.environ.get("PORT", SERVER_CONFIG["port"]))
+    log_level = log_level or SERVER_CONFIG["log_level"]
     
     logger.info(f"🚀 Starting server on {host}:{port}")
+    if reload:
+        logger.info("🔄 Auto-reload enabled (development mode)")
     
     # Use the correct module path for uvicorn
     uvicorn.run(
         "main:app",
         host=host,
         port=port,
-        log_level=SERVER_CONFIG["log_level"],
-        reload=False
+        log_level=log_level,
+        reload=reload
     )
 
 if __name__ == "__main__":
