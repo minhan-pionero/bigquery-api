@@ -1040,9 +1040,9 @@ async def create_seed_url_v1(
         if not isinstance(seed_urls, list) or not all(isinstance(url, str) for url in seed_urls):
             raise HTTPException(status_code=400, detail="Seed URLs must be a list of strings")
 
-        for url in seed_urls:
-            if not url.startswith("https://www.facebook.com/") or not url.endswith("/followers"):
-                raise HTTPException(status_code=400, detail="Each URL must be a Facebook followers URL (e.g., https://www.facebook.com/username/followers)")
+        # for url in seed_urls:
+        #     if not url.startswith("https://www.facebook.com/") or not url.endswith("/followers"):
+        #         raise HTTPException(status_code=400, detail="Each URL must be a Facebook followers URL (e.g., https://www.facebook.com/username/followers)")
 
         # Create new URL followers V1
         seed_urls_data = []
