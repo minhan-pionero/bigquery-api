@@ -8,3 +8,4 @@ requests==2.31.0
 pandas==2.3.1
 pyarrow==21.0.0
 mandrill==1.0.60
+httpx==0.25.0

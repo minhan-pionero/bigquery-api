@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Path, Query, Body
 from config.settings import Platform, TABLE_MAPPING
 from services.bigquery_service import bigquery_service
+from services.external_api_service import external_api_service
 from utils.transformers import transform_data
 
 
@@ -264,6 +265,38 @@ async def update_keyword(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ================================
+# SERP API ENDPOINTS  
+# ================================
+@router.get("/linkedin/serp")
+async def search_linkedin_profiles_serp(
+    keyword: str = Query(..., description="Search keyword"),
+    start: int = Query(default=0, ge=0, description="Start index for pagination")
+):
+    """Search LinkedIn profiles using SERP API"""
+    try:
+        logger.info(f"SERP API search request: keyword='{keyword}', start={start}")
+        
+        result = await external_api_service.search_linkedin_profiles(keyword, start)
+        
+        if not result["success"]:
+            logger.error(f"SERP API search failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        return {
+            "status": "success",
+            "keyword": keyword,
+            "start": start,
+            "profiles": result["profiles"],
+            "total_found": result["total_found"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in SERP API search: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ================================
 # LINKEDIN PROFILE URL ENDPOINTS
 # ================================
 @router.post("/linkedin/profile_url/batch")
@@ -484,4 +517,85 @@ async def get_profiles(
         
     except Exception as e:
         logger.error(f"Error querying linkedin profiles: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/linkedin/profile/details")
+async def get_profile_details_proapis(
+    profile_url: str = Query(..., description="LinkedIn profile URL")
+):
+    """Get profile details from ProAPIs"""
+    try:
+        logger.info(f"ProAPIs profile details request: {profile_url}")
+        
+        result = await external_api_service.get_profile_details(profile_url)
+        
+        if not result["success"]:
+            logger.error(f"ProAPIs profile details failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        return {
+            "status": "success",
+            "profile_url": profile_url,
+            "entity_urn": result["entity_urn"],
+            "data": result["data"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in ProAPIs profile details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/linkedin/profile/activities")
+async def get_profile_activities_proapis(
+    entity_urn: str = Query(..., description="LinkedIn profile entity URN")
+):
+    """Get profile activities from ProAPIs"""
+    try:
+        logger.info(f"ProAPIs profile activities request: {entity_urn}")
+        
+        result = await external_api_service.get_profile_activities(entity_urn)
+        
+        if not result["success"]:
+            logger.error(f"ProAPIs profile activities failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        return {
+            "status": "success", 
+            "entity_urn": entity_urn,
+            "data": result["data"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in ProAPIs profile activities: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/linkedin/profile/full")
+async def get_full_profile_proapis(
+    profile_url: str = Query(..., description="LinkedIn profile URL")
+):
+    """Get complete profile data (details + activities) from ProAPIs"""
+    try:
+        logger.info(f"ProAPIs full profile request: {profile_url}")
+        
+        result = await external_api_service.get_full_profile(profile_url)
+        
+        if not result["success"]:
+            logger.error(f"ProAPIs full profile failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        return {
+            "status": "success",
+            "profile_url": profile_url,
+            "entity_urn": result["entity_urn"],
+            "profile_data": result["profile_data"],
+            "activities_data": result["activities_data"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in ProAPIs full profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))

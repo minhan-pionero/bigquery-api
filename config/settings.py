@@ -57,3 +57,20 @@ EMAIL_CONFIG = {
         # "trunganh.nguyen_pt@pionero.io"
     ],
 }
+
+# SERP API configuration
+SERP_API_CONFIG = {
+    "api_key": None,  # Set via environment variable SERPAPI_KEY
+    "base_url": "https://serpapi.com/search.json",
+    "max_results_per_call": 10,
+    "default_location": "Japan",
+    "default_domain": "google.co.jp",
+    "default_gl": "jp",
+    "default_hl": "ja"
+}
+
+# ProAPIs configuration  
+PROAPIS_CONFIG = {
+    "api_key": None,  # Set via environment variable PROAPIS_KEY
+    "base_url": "https://api.proapis.com/iscraper/v4",  # Update with actual ProAPIs URL
+}

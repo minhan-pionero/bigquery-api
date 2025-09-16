@@ -15,14 +15,9 @@ router = APIRouter()
 
 class ErrorReportRequest(BaseModel):
     """Request model for error reports"""
-    title: str = Field(..., description="Error title/category (e.g., 'BigQuery API', 'Extension', 'Serp API')")
-    error_message: str = Field(..., description="The detailed error message")
-    extension_id: Optional[str] = Field(None, description="Extension ID that reported the error")
-    platform: Optional[str] = Field(None, description="Platform where error occurred (linkedin, facebook, etc.)")
-    error_type: Optional[str] = Field(None, description="Type of error (connection, api, parsing, etc.)")
-    url: Optional[str] = Field(None, description="URL where error occurred")
-    stack_trace: Optional[str] = Field(None, description="Stack trace of the error")
-    additional_context: Optional[Dict[str, Any]] = Field(None, description="Additional error context")
+    platform: str = Field(..., description="Platform where error occurred (LinkedIn, Facebook)")
+    method: str = Field(..., description="Method type (クローラー, 友達取得)")
+    error: str = Field(..., description="The error message")
 
 @router.post("/email/error-report")
 async def send_error_report(
@@ -35,63 +30,33 @@ async def send_error_report(
     Example request:
     ```json
     {
-        "title": "BigQuery API",
-        "error_message": "API 接続に失敗しました。サーバーの接続状況を確認してください。",
-        "extension_id": "ext_linkedin_001",
-        "platform": "linkedin",
-        "error_type": "connection",
-        "url": "https://www.linkedin.com/search/results/people/",
-        "additional_context": {
-            "timestamp": "2025-09-07T10:30:00Z",
-            "browser": "Chrome 118.0.0.0",
-            "operation": "profile_scraping"
-        }
+        "platform": "LinkedIn",
+        "method": "クローラー",
+        "error": "接続がタイムアウトしました。ネットワーク設定を確認してください。"
     }
     ```
     
-    Other title examples: "Extension", "Serp API", "Database Connection", etc.
+    Other examples: platform: "Facebook", method: "友達取得"
     """
     try:
-        # Get user agent from request headers
-        # user_agent = request.headers.get("user-agent")
-        user_agent = None
-        
-        # Prepare additional info
-        additional_info = {}
-        if error_data.error_type:
-            additional_info["error_type"] = error_data.error_type
-        if error_data.url:
-            additional_info["url"] = error_data.url
-        if error_data.stack_trace:
-            additional_info["stack_trace"] = error_data.stack_trace
-        if error_data.additional_context:
-            additional_info.update(error_data.additional_context)
-        
-        # Add request info
-        # additional_info["client_ip"] = request.client.host if request.client else "unknown"
-        # additional_info["timestamp"] = datetime.now().isoformat()
-        
         # Send email
         success = email_service.send_error_report(
-            title=error_data.title,
-            error_message=error_data.error_message,
-            extension_id=error_data.extension_id,
             platform=error_data.platform,
-            user_agent=user_agent,
-            additional_info=additional_info
+            method=error_data.method,
+            error=error_data.error
         )
         
         if success:
-            logger.info(f"✅ Error report email sent successfully for extension: {error_data.extension_id}")
+            logger.info(f"✅ Error report email sent successfully for platform: {error_data.platform}")
             return {
                 "status": "success",
                 "message": "Error report email sent successfully",
-                "extension_id": error_data.extension_id,
                 "platform": error_data.platform,
+                "method": error_data.method,
                 "timestamp": datetime.now().isoformat()
             }
         else:
-            logger.error(f"❌ Failed to send error report email for extension: {error_data.extension_id}")
+            logger.error(f"❌ Failed to send error report email for platform: {error_data.platform}")
             raise HTTPException(status_code=500, detail="Failed to send error report email")
         
     except Exception as e:
@@ -104,14 +69,9 @@ async def test_email_service():
     try:
         # Test with a simple error message
         success = email_service.send_error_report(
-            title="Test System",
-            error_message="This is a test error message from BigQuery API",
-            extension_id="test_extension",
-            platform="test",
-            additional_info={
-                "test": True,
-                "timestamp": datetime.now().isoformat()
-            }
+            platform="LinkedIn",
+            method="クローラー", 
+            error="This is a test error message from BigQuery API"
         )
         
         if success:
