@@ -49,18 +49,16 @@ SERVICE_ACCOUNT_CONFIG = {
 
 # Email configuration (Mandrill)
 EMAIL_CONFIG = {
-    "mandrill_api_key": "md-aeuZd69-RPEp1xvBojBk7Q",  # Set in environment variable
     "from_email": "compass-dev@hajimari.inc",
     "from_name": "compass-dev-team",
     "to_emails": [
-        "nguyenminhan0402@gmail.com",
+        "minhan.nguyen@pionero.io",
         # "trunganh.nguyen_pt@pionero.io"
     ],
 }
 
 # SERP API configuration
 SERP_API_CONFIG = {
-    "api_key": None,  # Set via environment variable SERPAPI_KEY
     "base_url": "https://serpapi.com/search.json",
     "max_results_per_call": 10,
     "default_location": "Japan",
@@ -71,6 +69,5 @@ SERP_API_CONFIG = {
 
 # ProAPIs configuration  
 PROAPIS_CONFIG = {
-    "api_key": None,  # Set via environment variable PROAPIS_KEY
     "base_url": "https://api.proapis.com/iscraper/v4",  # Update with actual ProAPIs URL
 }

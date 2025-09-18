@@ -16,7 +16,7 @@ class EmailService:
     
     def __init__(self):
         """Initialize Mandrill client"""
-        self.api_key = os.environ.get("MANDRILL_API_KEY", EMAIL_CONFIG["mandrill_api_key"])
+        self.api_key = os.environ.get("MANDRILL_API_KEY")
         self.client = None
         self.from_email = EMAIL_CONFIG["from_email"]
         self.from_name = EMAIL_CONFIG["from_name"]
@@ -66,7 +66,7 @@ class EmailService:
                     return False
             
             # Build email subject and content
-            email_subject = f"{platform}エラー通知"
+            email_subject = f"{platform}の{method}でエラーが発生しました"
             html_content = self._build_japanese_error_html(platform, method, error)
             text_content = self._build_japanese_error_text(platform, method, error)
             
@@ -124,8 +124,6 @@ class EmailService:
         error: str
     ) -> str:
         """Build Japanese HTML email content"""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -133,21 +131,13 @@ class EmailService:
             <meta charset="utf-8">
             <title>{platform}エラー通知</title>
         </head>
-        <body style="font-family: 'Hiragino Sans', 'Meiryo', 'MS PGothic', Arial, sans-serif; margin: 20px; background-color: #f5f5f5;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h2 style="color: #d32f2f; margin-bottom: 20px;">{platform}の{method}でエラーが発生しました</h2>
-                
+        <body style="font-family: 'Hiragino Sans', 'Meiryo', 'MS PGothic', Arial, sans-serif;">
+            <div style="max-width: 600px;">
                 <div style="background-color: #ffebee; padding: 15px; border-left: 4px solid #d32f2f; margin-bottom: 20px;">
                     <h3 style="margin: 0 0 10px 0; color: #d32f2f;">エラー内容</h3>
-                    <div style="margin: 0; padding: 10px 0; border-top: 1px solid #d32f2f; border-bottom: 1px solid #d32f2f;">
-                        ========================
-                    </div>
-                    <p style="margin: 10px 0; font-family: monospace; background-color: #fff; padding: 10px; border-radius: 4px; white-space: pre-wrap;">
+                    <p style="margin: 10px 0; font-family: monospace; background-color: #fff; padding: 10px; border-radius: 4px;">
                         {error}
                     </p>
-                    <div style="margin: 0; padding: 10px 0; border-top: 1px solid #d32f2f; border-bottom: 1px solid #d32f2f;">
-                        ========================
-                    </div>
                 </div>
             </div>
         </body>

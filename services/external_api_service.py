@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class ExternalAPIService:
     def __init__(self):
-        self.serp_api_key = os.environ.get("SERPAPI_KEY", SERP_API_CONFIG["api_key"])
-        self.proapis_key = os.environ.get("PROAPIS_KEY", PROAPIS_CONFIG["api_key"])
-        
+        self.serp_api_key = os.environ.get("SERPAPI_KEY")
+        self.proapis_key = os.environ.get("PROAPIS_KEY")
+
         if not self.serp_api_key:
             logger.warning("SERPAPI_KEY not found in environment variables")
         if not self.proapis_key:
