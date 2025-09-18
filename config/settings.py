@@ -53,6 +53,7 @@ EMAIL_CONFIG = {
     "from_name": "compass-dev-team",
     "to_emails": [
         "minhan.nguyen@pionero.io",
+        "compass-dev@hajimari.inc",
         # "trunganh.nguyen_pt@pionero.io"
     ],
 }
